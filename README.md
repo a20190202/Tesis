@@ -1,1 +1,1 @@
-# Tesis
+Repositorio para la tesis titulada "Identificación de placa y modelos de autos mediante redes convolucionales profundas en cámaras de video".

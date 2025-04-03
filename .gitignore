@@ -1,0 +1,15 @@
+*.txt
+*.csv
+*.bib
+*.eaf
+*.xlsx
+*.docx
+*.zip
+#Ignore pycache
+__pycache__/
+*.npy
+*.vec
+*.model
+/O1-Repositorio/1-Placas/datasets/ANPR2.v1i.yolov8
+/O1-Repositorio/1-Placas/datasets/Peru Plate Numbers.v3i.yolov8
+/O1-Repositorio/2-Modelos/imagenes
