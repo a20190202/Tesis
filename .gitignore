@@ -13,3 +13,8 @@ __pycache__/
 /O1-Repositorio/1-Placas/datasets/ANPR2.v1i.yolov8
 /O1-Repositorio/1-Placas/datasets/Peru Plate Numbers.v3i.yolov8
 /O1-Repositorio/2-Modelos/imagenes
+/O1-Repositorio/1-Placas/data-augmentation/augmented
+O1-Repositorio/1-Placas/data-augmentation/pothole.jpg
+/O1-Repositorio/1-Placas/datasets/ANPR2.v1i.coco
+/O1-Repositorio/1-Placas/datasets/Peru Plate Numbers.v3i.coco
+/O1-Repositorio/1-Placas/datasets/unified_dataset
