@@ -1,0 +1,36 @@
+{
+  "info": {
+    "year": "2024",
+    "version": "3",
+    "description": "Exported from roboflow.com",
+    "contributor": "",
+    "url": "https://public.roboflow.com/object-detection/undefined",
+    "date_created": "2024-05-18T23:28:12+00:00"
+  },
+  "licenses": [
+    {
+      "id": 1,
+      "url": "https://creativecommons.org/licenses/by/4.0/",
+      "name": "CC BY 4.0"
+    }
+  ],
+  "categories": [
+    {
+      "id": 0,
+      "name": "plates",
+      "supercategory": "none"
+    },
+    {
+      "id": 1,
+      "name": "Placa",
+      "supercategory": "plates"
+    },
+    {
+      "id": 2,
+      "name": "placa",
+      "supercategory": "plates"
+    }
+  ],
+  "images": [],
+  "annotations": []
+}
