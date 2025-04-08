@@ -20,3 +20,7 @@ O1-Repositorio/1-Placas/data-augmentation/pothole.jpg
 /O1-Repositorio/1-Placas/datasets/unified_dataset
 /O1-Repositorio/1-Placas/data-augmentation-test/augmented
 /O1-Repositorio/1-Placas/datasets/unified_dataset_data_augmentation/images
+*.rar
+/O1-Repositorio/1-Placas/datasets/merged_train_dataset
+/O1-Repositorio/1-Placas/datasets/merged_test_dataset/images
+/O1-Repositorio/1-Placas/datasets/merged_valid_dataset/images
