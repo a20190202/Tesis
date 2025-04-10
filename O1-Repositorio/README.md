@@ -56,8 +56,6 @@ Test Set
 2%
 53 Images
 
-Se repite xd
-
 ## 3. NumberPlates.v1i.yolov8.zip
 
 ModelIdentity
@@ -97,8 +95,6 @@ Test Set
 2%
 53 Images
 
-Se repite xd
-
 
 #2 Data label services
 
@@ -108,7 +104,7 @@ https://smartone.ai/solutions/data-labeling-services/
 
 # Repositorio - Modelos: Anotaciones
 
-## 1. Archivos marca y modelo de las marcas que estaban en Github y que sean TOP de los reportes
+## 1. Archivos marca y modelo de las marcas que estaban en Github y que sean TOP de los reportes. Repositorio https://github.com/abhionlyone/us-car-models-data
 
 script2.ipynb
 
