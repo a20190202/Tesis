@@ -30,3 +30,9 @@ O1-Repositorio/1-Placas/data-augmentation/pothole.jpg
 /O1-Repositorio/2-Modelos/merged-dataset/test-images
 /O1-Repositorio/2-Modelos/merged-dataset/train_augmented/images
 /O1-Repositorio/2-Modelos/merged-dataset/train_augmented/images_bbox_test
+/O1-Repositorio/2-Modelos/merged-dataset/train
+/O1-Repositorio/2-Modelos/merged-dataset/valid
+/O1-Repositorio/2-Modelos/merged-dataset/yolo_upload/all
+/O1-Repositorio/2-Modelos/merged-dataset/yolo_upload/resized
+/O1-Repositorio/2-Modelos/merged-dataset/yolo_upload/resized_bbox
+/O1-Repositorio/2-Modelos/merged-dataset/yolo_upload/sorted_by_category
