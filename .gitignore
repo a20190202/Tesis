@@ -38,3 +38,5 @@ O1-Repositorio/1-Placas/data-augmentation/pothole.jpg
 /O1-Repositorio/2-Modelos/merged-dataset/yolo_upload/sorted_by_category
 O1-Repositorio/1-Placas/cleanup.ipynb
 O1-Repositorio/2-Modelos/Clase_ModeloDeCarro.ipynb
+/O1-Repositorio/2-Modelos/merged-dataset/missing_images
+*.weights
