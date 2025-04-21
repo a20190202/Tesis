@@ -1,0 +1,9 @@
+# train and val data
+train: /home/jflores/yolov5_plate/dataset/images/train/
+val: /home/jflores/yolov5_plate/dataset/images/valid/
+
+# number of classes
+nc: 1
+
+# class names
+names: ['plate']

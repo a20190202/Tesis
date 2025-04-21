@@ -1,0 +1,6 @@
+train: /home/jflores/yolov8_plate/dataset/train_augmented
+val: /home/jflores/yolov8_plate/dataset/valid
+
+nc: 1
+
+names: ['plate']
