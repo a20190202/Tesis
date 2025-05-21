@@ -52,3 +52,7 @@ O1-Repositorio/2-Modelos/Clase_ModeloDeCarro.ipynb
 /O1-Repositorio/2-Modelos/merged-dataset/yolo_upload_onwards/dataset/images
 O2-Identificacion-numeros-placa/yolov5/train/yolov5s_results/weights/last.pt
 *.pt
+/O2-Identificacion-numeros-placa/bkup
+/O3-Deteccion-modelos/bkup/pesos
+/O3-Deteccion-modelos/yolov5/train
+/O3-Deteccion-modelos/yolov5/val
