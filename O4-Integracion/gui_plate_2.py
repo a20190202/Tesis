@@ -73,7 +73,7 @@ class VideoApp:
         self.progress_scale.bind(
             "<ButtonRelease-1>", lambda e: self.set_user_seeking(False)
         )
-        self.progress_scale.pack()
+        self.progress_scale.pack(after=self.canvas)
 
         success, frame = self.cap.read()
         if success:
