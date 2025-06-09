@@ -107,7 +107,7 @@ class VideoApp:
             return
 
         frame = None
-        threshold = 0.9
+        threshold = 0.7
 
         if not self.paused and self.running:
             ret, frame = self.cap.read()
@@ -119,15 +119,37 @@ class VideoApp:
 
             self.frame_counter += 1
 
+            font_scale = max(
+                frame.shape[0] / 720, 0.3
+            )  # scale font relative to height (720 is baseline)
+            font_thickness = max(int(frame.shape[0] / 720), 4)
+            rect_thickness = max(int(frame.shape[0] / 720), 2)
+
             car_result = self.car_model.track(
                 frame, persist=True, tracker="bytetrack.yaml"
             )[0]
 
             if car_result.boxes is not None:
                 car_boxes = car_result.boxes.xyxy.cpu().numpy()
-                for box_car in car_boxes:
+                car_confs = car_result.boxes.conf.cpu().numpy()
+                car_classes = car_result.boxes.cls.cpu().numpy().astype(int)
+                class_names = self.car_model.names  # model class index to label mapping
+                for box_car, conf, cls_id in zip(car_boxes, car_confs, car_classes):
                     x1, y1, x2, y2 = map(int, box_car)
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                    x1, y1, x2, y2 = map(int, box_car)
+                    label = f"{class_names[cls_id]} {conf:.2f}"
+                    cv2.rectangle(
+                        frame, (x1, y1), (x2, y2), (255, 0, 0), rect_thickness
+                    )
+                    cv2.putText(
+                        frame,
+                        label,
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale,
+                        (255, 0, 0),
+                        font_thickness,
+                    )
 
                     car_roi = frame[y1:y2, x1:x2]
                     plate_result = self.plate_model.track(
@@ -140,6 +162,15 @@ class VideoApp:
                     plate_boxes = plate_result.boxes.xyxy.cpu().numpy()
                     for box_plate in plate_boxes:
                         px1, py1, px2, py2 = map(int, box_plate)
+                        abs_px1, abs_py1 = x1 + px1, y1 + py1
+                        abs_px2, abs_py2 = x1 + px2, y1 + py2
+                        cv2.rectangle(
+                            frame,
+                            (abs_px1, abs_py1),
+                            (abs_px2, abs_py2),
+                            (0, 255, 0),
+                            rect_thickness,
+                        )
                         plate_roi = car_roi[py1:py2, px1:px2]
                         processed = self.preprocess_for_ocr(plate_roi)
 
@@ -155,30 +186,30 @@ class VideoApp:
                                 score = line[1][1]
                                 norm_text = self.normalize_text(raw_text)
 
-                                if 5 <= len(norm_text) <= 6 and score > threshold:
-                                    abs_px1, abs_py1 = x1 + px1, y1 + py1
-                                    abs_px2, abs_py2 = x1 + px2, y1 + py2
-                                    cv2.rectangle(
-                                        frame,
-                                        (abs_px1, abs_py1),
-                                        (abs_px2, abs_py2),
-                                        (0, 255, 0),
-                                        2,
-                                    )
+                                if (
+                                    5 <= len(norm_text) <= 6
+                                    and score > threshold
+                                    and "PERU" not in norm_text
+                                ):
+
                                     cv2.putText(
                                         frame,
                                         norm_text,
                                         (abs_px1, abs_py1 - 10),
                                         cv2.FONT_HERSHEY_SIMPLEX,
-                                        0.6,
+                                        font_scale,
                                         (0, 255, 255),
-                                        2,
+                                        font_thickness,
                                     )
                                     break
 
             self.current_frame = frame
 
         elif hasattr(self, "current_frame"):
+            frame = self.current_frame
+            font_scale = max(frame.shape[0] / 720, 0.3)
+            font_thickness = max(int(frame.shape[0] / 720), 4)
+            rect_thickness = max(int(frame.shape[0] / 720), 2)
             frame = self.current_frame
 
         if frame is not None:
