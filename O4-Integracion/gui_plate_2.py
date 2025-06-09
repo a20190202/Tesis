@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
-from tkinter import Tk, Label, Button, Canvas, filedialog
+from tkinter import Tk, Label, Button, Canvas, filedialog, Scale
 import threading
 import time
 from ultralytics import YOLO
@@ -38,11 +38,11 @@ class VideoApp:
 
         self.running = False
         self.loop_running = False
+        self.user_seeking = False
+        self.progress_scale = None
 
     def load_video(self):
-        path = filedialog.askopenfilename(
-            filetypes=[("Video files", "*.mp4 *.MP4 *.avi")]
-        )
+        path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.MP4 *.avi")])
         if not path:
             return
         self.cap = cv2.VideoCapture(path)
@@ -51,35 +51,54 @@ class VideoApp:
         self.frame_counter = 0
         self.running = True
 
-        # 🔽 Read first frame immediately
+        if self.progress_scale:
+            self.progress_scale.destroy()
+
+        self.progress_scale = Scale(self.root, from_=0, to=self.total_frames - 1,
+                                    orient="horizontal", length=self.canvas_width,
+                                    command=self.on_seek)
+        self.progress_scale.bind("<Button-1>", lambda e: self.set_user_seeking(True))
+        self.progress_scale.bind("<ButtonRelease-1>", lambda e: self.set_user_seeking(False))
+        self.progress_scale.pack()
+
         success, frame = self.cap.read()
         if success:
             self.current_frame = frame
-            self.frame_counter = 1  # First frame already read
-            self.display_frame(frame)  # ⬅️ New helper method to show it
+            self.frame_counter = 1
+            self.display_frame(frame)
 
         if not self.loop_running:
             self.loop_running = True
             self.root.after(30, self.play_video)
 
+    def set_user_seeking(self, seeking):
+        self.user_seeking = seeking
+
+    def on_seek(self, value):
+        if self.cap and self.user_seeking:
+            self.paused = True
+            self.frame_counter = int(value)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_counter)
+            success, frame = self.cap.read()
+            if success:
+                self.current_frame = frame
+                self.display_frame(frame)
+
     def normalize_text(self, text):
-        return re.sub(r"[^A-Z0-9]", "", text.upper())
+        return re.sub(r'[^A-Z0-9]', '', text.upper())
 
     def display_frame(self, frame):
-        # Resize frame to fit canvas
         h, w = frame.shape[:2]
         scale = min(self.canvas_width / w, self.canvas_height / h)
         new_w, new_h = int(w * scale), int(h * scale)
         resized_frame = cv2.resize(frame, (new_w, new_h))
 
-        # Convert to ImageTk and show
         rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(rgb_frame)
         imgtk = ImageTk.PhotoImage(image=img)
         self.canvas.create_image(0, 0, anchor="nw", image=imgtk)
         self.canvas.image = imgtk
 
-        # Update time label
         current_sec = self.frame_counter / self.fps
         total_sec = self.total_frames / self.fps
         self.label_time.config(
@@ -97,9 +116,7 @@ class VideoApp:
         gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        morph = cv2.dilate(
-            thresh, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1
-        )
+        morph = cv2.dilate(thresh, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1)
         return cv2.bitwise_not(morph)
 
     def play_video(self):
@@ -119,42 +136,28 @@ class VideoApp:
 
             self.frame_counter += 1
 
-            font_scale = max(
-                frame.shape[0] / 720, 0.3
-            )  # scale font relative to height (720 is baseline)
+            if self.progress_scale and not self.user_seeking:
+                self.progress_scale.set(self.frame_counter)
+
+            font_scale = max(frame.shape[0] / 720, 0.3)
             font_thickness = max(int(frame.shape[0] / 720), 4)
             rect_thickness = max(int(frame.shape[0] / 720), 2)
 
-            car_result = self.car_model.track(
-                frame, persist=True, tracker="bytetrack.yaml"
-            )[0]
+            car_result = self.car_model.track(frame, persist=True, tracker="bytetrack.yaml")[0]
 
             if car_result.boxes is not None:
                 car_boxes = car_result.boxes.xyxy.cpu().numpy()
                 car_confs = car_result.boxes.conf.cpu().numpy()
                 car_classes = car_result.boxes.cls.cpu().numpy().astype(int)
-                class_names = self.car_model.names  # model class index to label mapping
+                class_names = self.car_model.names
                 for box_car, conf, cls_id in zip(car_boxes, car_confs, car_classes):
                     x1, y1, x2, y2 = map(int, box_car)
-                    x1, y1, x2, y2 = map(int, box_car)
                     label = f"{class_names[cls_id]} {conf:.2f}"
-                    cv2.rectangle(
-                        frame, (x1, y1), (x2, y2), (255, 0, 0), rect_thickness
-                    )
-                    cv2.putText(
-                        frame,
-                        label,
-                        (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        font_scale,
-                        (255, 0, 0),
-                        font_thickness,
-                    )
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), rect_thickness)
+                    cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 0, 0), font_thickness)
 
                     car_roi = frame[y1:y2, x1:x2]
-                    plate_result = self.plate_model.track(
-                        car_roi, persist=True, tracker="bytetrack.yaml"
-                    )[0]
+                    plate_result = self.plate_model.track(car_roi, persist=True, tracker="bytetrack.yaml")[0]
 
                     if plate_result.boxes is None:
                         continue
@@ -164,17 +167,10 @@ class VideoApp:
                         px1, py1, px2, py2 = map(int, box_plate)
                         abs_px1, abs_py1 = x1 + px1, y1 + py1
                         abs_px2, abs_py2 = x1 + px2, y1 + py2
-                        cv2.rectangle(
-                            frame,
-                            (abs_px1, abs_py1),
-                            (abs_px2, abs_py2),
-                            (0, 255, 0),
-                            rect_thickness,
-                        )
+                        cv2.rectangle(frame, (abs_px1, abs_py1), (abs_px2, abs_py2), (0, 255, 0), rect_thickness)
                         plate_roi = car_roi[py1:py2, px1:px2]
                         processed = self.preprocess_for_ocr(plate_roi)
 
-                        # Convert to 3 channels if needed
                         if len(processed.shape) == 2:
                             processed = cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
 
@@ -186,30 +182,14 @@ class VideoApp:
                                 score = line[1][1]
                                 norm_text = self.normalize_text(raw_text)
 
-                                if (
-                                    5 <= len(norm_text) <= 6
-                                    and score > threshold
-                                    and "PERU" not in norm_text
-                                ):
-
-                                    cv2.putText(
-                                        frame,
-                                        norm_text,
-                                        (abs_px1, abs_py1 - 10),
-                                        cv2.FONT_HERSHEY_SIMPLEX,
-                                        font_scale,
-                                        (0, 255, 255),
-                                        font_thickness,
-                                    )
+                                if 5 <= len(norm_text) <= 6 and score > threshold and "PERU" not in norm_text:
+                                    cv2.putText(frame, norm_text, (abs_px1, abs_py1 - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                                                font_scale, (0, 255, 255), font_thickness)
                                     break
 
             self.current_frame = frame
 
-        elif hasattr(self, "current_frame"):
-            frame = self.current_frame
-            font_scale = max(frame.shape[0] / 720, 0.3)
-            font_thickness = max(int(frame.shape[0] / 720), 4)
-            rect_thickness = max(int(frame.shape[0] / 720), 2)
+        elif hasattr(self, 'current_frame'):
             frame = self.current_frame
 
         if frame is not None:
@@ -221,13 +201,12 @@ class VideoApp:
 
 if __name__ == "__main__":
     import sys
-
     if len(sys.argv) != 3:
         print("Usage: python gui_plate_v2.py <car_model.pt> <plate_model.pt>")
     else:
         model_car = YOLO(sys.argv[1])
         model_plate = YOLO(sys.argv[2])
-        ocr = PaddleOCR(use_angle_cls=False, lang="en")
+        ocr = PaddleOCR(use_angle_cls=False, lang='en')
 
         root = Tk()
         app = VideoApp(root, model_car, model_plate, ocr)
