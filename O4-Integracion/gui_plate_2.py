@@ -12,7 +12,9 @@ import re
 class VideoApp:
     def __init__(self, root, car_model, plate_model, ocr_model):
         self.root = root
-        self.root.title("YOLO + OCR Plate Recognition")
+        self.root.title(
+            "Identificación de números de placa y detección de modelos de automóviles"
+        )
         self.car_model = car_model
         self.plate_model = plate_model
         self.ocr = ocr_model
@@ -30,10 +32,12 @@ class VideoApp:
         self.label_time = Label(root, text="00:00 / 00:00")
         self.label_time.pack()
 
-        self.btn_play_pause = Button(root, text="Play", command=self.toggle_play)
+        self.btn_play_pause = Button(root, text="Reproducir", command=self.toggle_play)
         self.btn_play_pause.pack()
 
-        self.btn_select = Button(root, text="Select Video", command=self.load_video)
+        self.btn_select = Button(
+            root, text="Seleccionar Video", command=self.load_video
+        )
         self.btn_select.pack()
 
         self.running = False
@@ -55,7 +59,7 @@ class VideoApp:
 
         self.btn_play_pause.config(state="normal")
         self.paused = True
-        self.btn_play_pause.config(text="Play")
+        self.btn_play_pause.config(text="Reproducir")
 
         if self.progress_scale:
             self.progress_scale.destroy()
@@ -91,7 +95,7 @@ class VideoApp:
     def on_seek(self, value):
         if self.cap and self.user_seeking:
             self.paused = True
-            self.btn_play_pause.config(text="Play")
+            self.btn_play_pause.config(text="Reproducir")
             self.frame_counter = int(value)
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_counter)
             success, frame = self.cap.read()
@@ -111,7 +115,13 @@ class VideoApp:
         rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(rgb_frame)
         imgtk = ImageTk.PhotoImage(image=img)
-        self.canvas.create_image(0, 0, anchor="nw", image=imgtk)
+
+        # Calculate vertical offset to center the image
+        y_offset = (self.canvas_height - new_h) // 2
+        x_offset = (self.canvas_width - new_w) // 2
+
+        self.canvas.delete("all")  # Clear previous images
+        self.canvas.create_image(x_offset, y_offset, anchor="nw", image=imgtk)
         self.canvas.image = imgtk
 
         current_sec = self.frame_counter / self.fps
@@ -124,7 +134,7 @@ class VideoApp:
         if not self.cap:
             return
         self.paused = not self.paused
-        self.btn_play_pause.config(text="Pause" if not self.paused else "Play")
+        self.btn_play_pause.config(text="Pausar" if not self.paused else "Reproducir")
 
     def preprocess_for_ocr(self, roi):
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
