@@ -6,6 +6,7 @@ import threading
 import time
 from ultralytics import YOLO
 from paddleocr import PaddleOCR
+import re
 
 
 class VideoApp:
@@ -39,7 +40,9 @@ class VideoApp:
         self.loop_running = False
 
     def load_video(self):
-        path = filedialog.askopenfilename(filetypes=[("Video files", "*.mp4 *.MP4 *.avi")])
+        path = filedialog.askopenfilename(
+            filetypes=[("Video files", "*.mp4 *.MP4 *.avi")]
+        )
         if not path:
             return
         self.cap = cv2.VideoCapture(path)
@@ -58,6 +61,9 @@ class VideoApp:
         if not self.loop_running:
             self.loop_running = True
             self.root.after(30, self.play_video)
+
+    def normalize_text(self, text):
+        return re.sub(r"[^A-Z0-9]", "", text.upper())
 
     def display_frame(self, frame):
         # Resize frame to fit canvas
@@ -86,13 +92,14 @@ class VideoApp:
         self.paused = not self.paused
         self.btn_play_pause.config(text="Pause" if not self.paused else "Play")
 
-
     def preprocess_for_ocr(self, roi):
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        morph = cv2.dilate(thresh, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1)
+        morph = cv2.dilate(
+            thresh, cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2)), iterations=1
+        )
         return cv2.bitwise_not(morph)
 
     def play_video(self):
@@ -100,6 +107,7 @@ class VideoApp:
             return
 
         frame = None
+        threshold = 0.9
 
         if not self.paused and self.running:
             ret, frame = self.cap.read()
@@ -110,33 +118,85 @@ class VideoApp:
                 return
 
             self.frame_counter += 1
-            results = self.car_model.track(frame, persist=True, tracker="bytetrack.yaml")[0]
 
-            if results.boxes:
-                for box in results.boxes.xyxy.cpu().numpy():
-                    x1, y1, x2, y2 = map(int, box)
+            car_result = self.car_model.track(
+                frame, persist=True, tracker="bytetrack.yaml"
+            )[0]
+
+            if car_result.boxes is not None:
+                car_boxes = car_result.boxes.xyxy.cpu().numpy()
+                for box_car in car_boxes:
+                    x1, y1, x2, y2 = map(int, box_car)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
+                    car_roi = frame[y1:y2, x1:x2]
+                    plate_result = self.plate_model.track(
+                        car_roi, persist=True, tracker="bytetrack.yaml"
+                    )[0]
+
+                    if plate_result.boxes is None:
+                        continue
+
+                    plate_boxes = plate_result.boxes.xyxy.cpu().numpy()
+                    for box_plate in plate_boxes:
+                        px1, py1, px2, py2 = map(int, box_plate)
+                        plate_roi = car_roi[py1:py2, px1:px2]
+                        processed = self.preprocess_for_ocr(plate_roi)
+
+                        # Convert to 3 channels if needed
+                        if len(processed.shape) == 2:
+                            processed = cv2.cvtColor(processed, cv2.COLOR_GRAY2RGB)
+
+                        ocr_result = self.ocr.ocr(processed, cls=False)
+
+                        if ocr_result and len(ocr_result[0]) > 0:
+                            for line in ocr_result[0]:
+                                raw_text = line[1][0].strip()
+                                score = line[1][1]
+                                norm_text = self.normalize_text(raw_text)
+
+                                if 5 <= len(norm_text) <= 6 and score > threshold:
+                                    abs_px1, abs_py1 = x1 + px1, y1 + py1
+                                    abs_px2, abs_py2 = x1 + px2, y1 + py2
+                                    cv2.rectangle(
+                                        frame,
+                                        (abs_px1, abs_py1),
+                                        (abs_px2, abs_py2),
+                                        (0, 255, 0),
+                                        2,
+                                    )
+                                    cv2.putText(
+                                        frame,
+                                        norm_text,
+                                        (abs_px1, abs_py1 - 10),
+                                        cv2.FONT_HERSHEY_SIMPLEX,
+                                        0.6,
+                                        (0, 255, 255),
+                                        2,
+                                    )
+                                    break
+
             self.current_frame = frame
-        elif hasattr(self, 'current_frame'):
+
+        elif hasattr(self, "current_frame"):
             frame = self.current_frame
 
-        # If we have a frame (either new or from pause), show it
         if frame is not None:
             self.display_frame(frame)
 
-        # Always continue looping
         if self.loop_running:
             self.root.after(30, self.play_video)
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) != 3:
         print("Usage: python gui_plate_v2.py <car_model.pt> <plate_model.pt>")
     else:
         model_car = YOLO(sys.argv[1])
         model_plate = YOLO(sys.argv[2])
-        ocr = PaddleOCR(use_angle_cls=False, lang='en')
+        ocr = PaddleOCR(use_angle_cls=False, lang="en")
 
         root = Tk()
         app = VideoApp(root, model_car, model_plate, ocr)
