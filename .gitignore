@@ -56,3 +56,9 @@ O2-Identificacion-numeros-placa/yolov5/train/yolov5s_results/weights/last.pt
 /O3-Deteccion-modelos/bkup/pesos
 /O3-Deteccion-modelos/yolov5/train
 /O3-Deteccion-modelos/yolov5/val
+/O3-Deteccion-modelos/runs/detect
+/O4-Integracion/O4_test/images
+/O4-Integracion/O4_test_images_results
+/O4-Integracion/O4_test_labels_results
+/O1-Repositorio/1-Placas/datasets/ANPR2.v1i.coco/test
+/O4-Integracion/runs/detect
