@@ -7,14 +7,13 @@ import time
 from ultralytics import YOLO
 from paddleocr import PaddleOCR
 import re
+import os
 
 
 class VideoApp:
     def __init__(self, root, car_model, plate_model, ocr_model):
         self.root = root
-        self.root.title(
-            "Identificación de números de placa y detección de modelos de automóviles"
-        )
+        self.root.title("Identificación de números de placa y detección de modelos de automóviles")
         self.car_model = car_model
         self.plate_model = plate_model
         self.ocr = ocr_model
@@ -32,12 +31,16 @@ class VideoApp:
         self.label_time = Label(root, text="00:00 / 00:00")
         self.label_time.pack()
 
+        self.label_fps = Label(root, text="FPS: -")
+        self.label_fps.pack()
+
+        self.label_filename = Label(root, text="Archivo: -")
+        self.label_filename.pack()
+
         self.btn_play_pause = Button(root, text="Reproducir", command=self.toggle_play)
         self.btn_play_pause.pack()
 
-        self.btn_select = Button(
-            root, text="Seleccionar Video", command=self.load_video
-        )
+        self.btn_select = Button(root, text="Seleccionar Video", command=self.load_video)
         self.btn_select.pack()
 
         self.running = False
@@ -51,9 +54,12 @@ class VideoApp:
         )
         if not path:
             return
+        filename = os.path.basename(path)
+        self.label_filename.config(text=f"Archivo: {filename}")
         self.cap = cv2.VideoCapture(path)
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.total_sec = self.total_frames / self.fps
         self.frame_counter = 0
         self.running = True
 
@@ -124,10 +130,10 @@ class VideoApp:
         self.canvas.create_image(x_offset, y_offset, anchor="nw", image=imgtk)
         self.canvas.image = imgtk
 
-        current_sec = self.frame_counter / self.fps
-        total_sec = self.total_frames / self.fps
+        current_sec = self.cap.get(cv2.CAP_PROP_POS_MSEC) / 1000
+        
         self.label_time.config(
-            text=f"{int(current_sec//60):02}:{int(current_sec%60):02} / {int(total_sec//60):02}:{int(total_sec%60):02}"
+            text=f"{int(current_sec//60):02}:{int(current_sec%60):02} / {int(self.total_sec//60):02}:{int(self.total_sec%60):02}"
         )
 
     def toggle_play(self):
@@ -151,7 +157,9 @@ class VideoApp:
             return
 
         frame = None
-        threshold = 0.7
+        threshold = 0.6
+
+        start_time = time.time()
 
         if not self.paused and self.running:
             ret, frame = self.cap.read()
@@ -169,9 +177,9 @@ class VideoApp:
             if self.progress_scale and not self.user_seeking:
                 self.progress_scale.set(self.frame_counter)
 
-            font_scale = max(frame.shape[0] / 720, 0.3)
-            font_thickness = max(int(frame.shape[0] / 720), 4)
-            rect_thickness = max(int(frame.shape[0] / 720), 2)
+            font_scale = max(frame.shape[0] / 720, 0.5)
+            font_thickness = max(int(frame.shape[0] / 720), 8)
+            rect_thickness = max(int(frame.shape[0] / 720), 4)
 
             car_result = self.car_model.track(
                 frame, persist=True, tracker="bytetrack.yaml"
@@ -188,6 +196,7 @@ class VideoApp:
                     cv2.rectangle(
                         frame, (x1, y1), (x2, y2), (255, 0, 0), rect_thickness
                     )
+                    '''
                     cv2.putText(
                         frame,
                         label,
@@ -196,6 +205,30 @@ class VideoApp:
                         font_scale,
                         (255, 0, 0),
                         font_thickness,
+                    )
+                    '''
+                    # Draw black border
+                    cv2.putText(
+                        frame,
+                        label,
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale,
+                        (0, 0, 0),  # Black
+                        font_thickness + 8,
+                        lineType=cv2.LINE_AA,
+                    )
+
+                    # Draw white text
+                    cv2.putText(
+                        frame,
+                        label,
+                        (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale,
+                        (255, 255, 255),  # White
+                        font_thickness,
+                        lineType=cv2.LINE_AA,
                     )
 
                     car_roi = frame[y1:y2, x1:x2]
@@ -226,14 +259,14 @@ class VideoApp:
 
                         ocr_result = self.ocr.ocr(processed, cls=False)
 
-                        if ocr_result and len(ocr_result[0]) > 0:
+                        if ocr_result is not None and len(ocr_result) > 0 and ocr_result[0] is not None and len(ocr_result[0]) > 0:
                             for line in ocr_result[0]:
                                 raw_text = line[1][0].strip()
                                 score = line[1][1]
                                 norm_text = self.normalize_text(raw_text)
 
                                 if (
-                                    5 <= len(norm_text) <= 6
+                                    5 <= len(norm_text)
                                     and score > threshold
                                     and "PERU" not in norm_text
                                 ):
@@ -255,6 +288,15 @@ class VideoApp:
 
         if frame is not None:
             self.display_frame(frame)
+
+        if not self.paused:
+            end_time = time.time()
+            elapsed = end_time - start_time
+            if elapsed > 0:
+                self.fps = 1 / elapsed
+                self.label_fps.config(text=f"FPS: {self.fps:.2f}")
+        else:
+            self.label_fps.config(text="FPS: -")
 
         if self.loop_running:
             self.root.after(30, self.play_video)
